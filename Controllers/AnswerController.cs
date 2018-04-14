@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Linq;
 using Mapster;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using TestMakerFreeApi.Data;
 using TestMakerFreeApi.Data.Models;
 using TestMakerFreeApi.ViewModels;
@@ -10,9 +12,11 @@ namespace TestMakerFreeApi.Controllers
 {
     public class AnswerController : BaseApiClontroller
     {
-        public AnswerController(ApplicationDbContext dbContext):base(dbContext)
+        public AnswerController(ApplicationDbContext dbContext,
+            RoleManager<IdentityRole> roleManager,
+            UserManager<ApplicationUser> userManager,
+            IConfiguration configuration) : base(dbContext, roleManager, userManager, configuration)
         {
-            
         }
 
         [HttpGet("{id}", Name = "GetAnswer")]
@@ -27,10 +31,10 @@ namespace TestMakerFreeApi.Controllers
                     Error = $"Answer ID {id} has not been found"
                 });
             }
-            
+
             return Ok(answer.Adapt<AnswerViewModel>());
         }
-        
+
         [HttpPut]
         public IActionResult Put([FromBody] AnswerViewModel model)
         {
@@ -45,7 +49,7 @@ namespace TestMakerFreeApi.Controllers
                     Error = $"Answer ID {model.Id} has not been found"
                 });
             }
-            
+
             answer.QuestionId = model.QuestionId;
             answer.Text = model.Text;
             answer.Value = model.Value;
@@ -56,14 +60,14 @@ namespace TestMakerFreeApi.Controllers
 
             return NoContent();
         }
-        
+
         [HttpPost]
         public IActionResult Post([FromBody] AnswerViewModel model)
         {
             if (model == null) return BadRequest();
-            
+
             var answer = model.Adapt<Answer>();
-            
+
             answer.QuestionId = model.QuestionId;
             answer.Text = model.Text;
             answer.Notes = model.Notes;
@@ -75,12 +79,12 @@ namespace TestMakerFreeApi.Controllers
 
             return Created("GetAnswer", answer);
         }
-        
+
         [HttpDelete("{id}")]
         public IActionResult Delete(int id)
         {
             var answer = DbContext.Answers.FirstOrDefault(i => i.Id == id);
-            
+
             if (answer == null)
             {
                 return NotFound(new

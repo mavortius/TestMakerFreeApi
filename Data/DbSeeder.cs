@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Identity;
 using TestMakerFreeApi.Data.Models;
 
 namespace TestMakerFreeApi.Data
@@ -8,9 +10,15 @@ namespace TestMakerFreeApi.Data
     {
         #region Public Methods
 
-        public static void Seed(ApplicationDbContext context)
+        public static void Seed(ApplicationDbContext context,
+            RoleManager<IdentityRole> roleManager,
+            UserManager<ApplicationUser> userManager
+        )
         {
-            if (!context.Users.Any()) CreateUsers(context);
+            if (!context.Users.Any())
+                CreateUsers(context, roleManager, userManager)
+                    .GetAwaiter()
+                    .GetResult();
 
             if (!context.Quizzes.Any()) CreateQuizzes(context);
         }
@@ -81,26 +89,48 @@ namespace TestMakerFreeApi.Data
 
         #endregion
 
-        private static void CreateUsers(ApplicationDbContext context)
+        private static async Task CreateUsers(ApplicationDbContext context,
+            RoleManager<IdentityRole> roleManager,
+            UserManager<ApplicationUser> userManager)
         {
             var createdDate = new DateTime(2016, 03, 01, 12, 20, 00);
             var lastModifiedDate = DateTime.Now;
+            const string roleAdministrator = "Administrator";
+            const string roleRegisteredUser = "RegisteredUser";
+
+            if (!await roleManager.RoleExistsAsync(roleAdministrator))
+            {
+                await roleManager.CreateAsync(new IdentityRole(roleAdministrator));
+            }
+
+            if (!await roleManager.RoleExistsAsync(roleRegisteredUser))
+            {
+                await roleManager.CreateAsync(new IdentityRole(roleRegisteredUser));
+            }
 
             var userAdmin = new ApplicationUser()
             {
-                Id = Guid.NewGuid().ToString(),
+                SecurityStamp = Guid.NewGuid().ToString(),
                 UserName = "Admin",
                 Email = "admin@testmakerfree.com",
                 CreatedDate = createdDate,
                 LastModifiedDate = lastModifiedDate
             };
 
-            context.Users.Add(userAdmin);
+            if (await userManager.FindByNameAsync(userAdmin.UserName) == null)
+            {
+                await userManager.CreateAsync(userAdmin, "Pass4Admin");
+                await userManager.AddToRoleAsync(userAdmin, roleRegisteredUser);
+                await userManager.AddToRoleAsync(userAdmin, roleAdministrator);
+
+                userAdmin.EmailConfirmed = true;
+                userAdmin.LockoutEnabled = false;
+            }
 
 #if DEBUG
             var userRyan = new ApplicationUser()
             {
-                Id = Guid.NewGuid().ToString(),
+                SecurityStamp = Guid.NewGuid().ToString(),
                 UserName = "Ryan",
                 Email = "ryan@testmakerfree.com",
                 CreatedDate = createdDate,
@@ -108,7 +138,7 @@ namespace TestMakerFreeApi.Data
             };
             var userSolice = new ApplicationUser()
             {
-                Id = Guid.NewGuid().ToString(),
+                SecurityStamp = Guid.NewGuid().ToString(),
                 UserName = "Solice",
                 Email = "solice@testmakerfree.com",
                 CreatedDate = createdDate,
@@ -116,16 +146,42 @@ namespace TestMakerFreeApi.Data
             };
             var userVodan = new ApplicationUser()
             {
-                Id = Guid.NewGuid().ToString(),
+                SecurityStamp = Guid.NewGuid().ToString(),
                 UserName = "Vodan",
                 Email = "vodan@testmakerfree.com",
                 CreatedDate = createdDate,
                 LastModifiedDate = lastModifiedDate
             };
 
-            context.Users.AddRange(userRyan, userSolice, userVodan);
+            if (await userManager.FindByNameAsync(userRyan.UserName) == null)
+            {
+                await userManager.CreateAsync(userRyan, "Pass4Ryan");
+                await userManager.AddToRoleAsync(userRyan, roleRegisteredUser);
+// Remove Lockout and E-Mail confirmation.
+                userRyan.EmailConfirmed = true;
+                userRyan.LockoutEnabled = false;
+            }
+
+            if (await userManager.FindByNameAsync(userSolice.UserName) == null)
+            {
+                await userManager.CreateAsync(userSolice, "Pass4Solice");
+                await userManager.AddToRoleAsync(userSolice, roleRegisteredUser);
+// Remove Lockout and E-Mail confirmation.
+                userSolice.EmailConfirmed = true;
+                userSolice.LockoutEnabled = false;
+            }
+
+            if (await userManager.FindByNameAsync(userVodan.UserName) == null)
+            {
+                await userManager.CreateAsync(userVodan, "Pass4Vodan");
+                await userManager.AddToRoleAsync(userVodan, roleRegisteredUser);
+// Remove Lockout and E-Mail confirmation.
+                userVodan.EmailConfirmed = true;
+                userVodan.LockoutEnabled = false;
+            }
+
 #endif
-            context.SaveChanges();
+            await context.SaveChangesAsync();
         }
 
         #region Utility Methods
@@ -151,10 +207,10 @@ namespace TestMakerFreeApi.Data
                 CreatedDate = createdDate,
                 LastModifiedDate = createdDate
             };
-            
+
             dbContext.Quizzes.Add(quiz);
             dbContext.SaveChanges();
-            
+
             for (var i = 0; i < numberOfQuestions; i++)
             {
                 var question = new Question()
@@ -165,10 +221,10 @@ namespace TestMakerFreeApi.Data
                     CreatedDate = createdDate,
                     LastModifiedDate = createdDate
                 };
-                
+
                 dbContext.Questions.Add(question);
                 dbContext.SaveChanges();
-                
+
                 for (var i2 = 0; i2 < numberOfAnswersPerQuestion; i2++)
                 {
                     dbContext.Answers.Add(new Answer()

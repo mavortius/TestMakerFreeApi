@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Linq;
 using Mapster;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using TestMakerFreeApi.Data;
 using TestMakerFreeApi.Data.Models;
 using TestMakerFreeApi.ViewModels;
@@ -10,7 +12,10 @@ namespace TestMakerFreeApi.Controllers
 {
     public class QuestionController : BaseApiClontroller
     {
-        public QuestionController(ApplicationDbContext dbContext) : base(dbContext)
+        public QuestionController(ApplicationDbContext dbContext,
+            RoleManager<IdentityRole> roleManager,
+            UserManager<ApplicationUser> userManager,
+            IConfiguration configuration) : base(dbContext, roleManager, userManager, configuration)
         {
         }
 
@@ -59,9 +64,9 @@ namespace TestMakerFreeApi.Controllers
         public IActionResult Post([FromBody] QuestionViewModel model)
         {
             if (model == null) return BadRequest();
-            
+
             var question = model.Adapt<Question>();
-            
+
             question.QuizId = model.QuizId;
             question.Text = model.Text;
             question.Notes = model.Notes;
@@ -92,7 +97,7 @@ namespace TestMakerFreeApi.Controllers
 
             return NoContent();
         }
-        
+
         [HttpGet("All/{quizId}")]
         public IActionResult All(int quizId)
         {

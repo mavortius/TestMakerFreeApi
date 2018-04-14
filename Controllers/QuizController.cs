@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Linq;
 using Mapster;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using TestMakerFreeApi.Data;
 using TestMakerFreeApi.Data.Models;
 using TestMakerFreeApi.ViewModels;
@@ -10,7 +12,10 @@ namespace TestMakerFreeApi.Controllers
 {
     public class QuizController : BaseApiClontroller
     {
-        public QuizController(ApplicationDbContext dbContext) : base(dbContext)
+        public QuizController(ApplicationDbContext dbContext,
+            RoleManager<IdentityRole> roleManager,
+            UserManager<ApplicationUser> userManager,
+            IConfiguration configuration) : base(dbContext, roleManager, userManager, configuration)
         {
         }
 

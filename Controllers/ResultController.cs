@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Linq;
 using Mapster;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using TestMakerFreeApi.Data;
 using TestMakerFreeApi.Data.Models;
 using TestMakerFreeApi.ViewModels;
@@ -10,17 +12,20 @@ namespace TestMakerFreeApi.Controllers
 {
     public class ResultController : BaseApiClontroller
     {
-        public ResultController(ApplicationDbContext dbContext) : base(dbContext)
+        public ResultController(ApplicationDbContext dbContext,
+            RoleManager<IdentityRole> roleManager,
+            UserManager<ApplicationUser> userManager,
+            IConfiguration configuration) : base(dbContext, roleManager, userManager, configuration)
         {
         }
-        
+
         [HttpPut]
         public IActionResult Put([FromBody] ResultViewModel model)
         {
             if (model == null) return BadRequest();
 
             var result = DbContext.Results.FirstOrDefault(q => q.Id == model.Id);
-            
+
             if (result == null)
             {
                 return NotFound(new
@@ -28,7 +33,7 @@ namespace TestMakerFreeApi.Controllers
                     Error = $"Result ID {model.Id} has not been found"
                 });
             }
-            
+
             result.QuizId = model.QuizId;
             result.Text = model.Text;
             result.MinValue = model.MinValue;
@@ -40,14 +45,14 @@ namespace TestMakerFreeApi.Controllers
 
             return NoContent();
         }
-        
+
         [HttpPost]
         public IActionResult Post([FromBody] ResultViewModel model)
         {
             if (model == null) return BadRequest();
-            
+
             var result = model.Adapt<Result>();
-            
+
             result.CreatedDate = DateTime.Now;
             result.LastModifiedDate = result.CreatedDate;
 
@@ -72,12 +77,12 @@ namespace TestMakerFreeApi.Controllers
 
             return Ok(result.Adapt<ResultViewModel>());
         }
-        
+
         [HttpDelete("{id}")]
         public IActionResult Delete(int id)
         {
             var result = DbContext.Results.FirstOrDefault(i => i.Id == id);
-            
+
             if (result == null)
             {
                 return NotFound(new
