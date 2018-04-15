@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Linq;
+using System.Security.Claims;
 using Mapster;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -36,6 +38,7 @@ namespace TestMakerFreeApi.Controllers
         }
 
         [HttpPut]
+        [Authorize]
         public IActionResult Put([FromBody] QuizViewModel model)
         {
             if (model == null) return new BadRequestResult();
@@ -62,6 +65,7 @@ namespace TestMakerFreeApi.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         public IActionResult Post([FromBody] QuizViewModel model)
         {
             if (model == null) return new BadRequestResult();
@@ -76,7 +80,7 @@ namespace TestMakerFreeApi.Controllers
             };
 
             quiz.LastModifiedDate = quiz.CreatedDate;
-            quiz.UserId = DbContext.Users.FirstOrDefault(u => u.UserName == "Admin")?.Id;
+            quiz.UserId = User.FindFirst(ClaimTypes.NameIdentifier).Value;
 
             DbContext.Quizzes.Add(quiz);
             DbContext.SaveChanges();
@@ -85,6 +89,7 @@ namespace TestMakerFreeApi.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize]
         public IActionResult Delete(int id)
         {
             var quiz = DbContext.Quizzes.FirstOrDefault(i => i.Id == id);

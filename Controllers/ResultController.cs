@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using Mapster;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -20,6 +21,7 @@ namespace TestMakerFreeApi.Controllers
         }
 
         [HttpPut]
+        [Authorize]
         public IActionResult Put([FromBody] ResultViewModel model)
         {
             if (model == null) return BadRequest();
@@ -47,6 +49,7 @@ namespace TestMakerFreeApi.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         public IActionResult Post([FromBody] ResultViewModel model)
         {
             if (model == null) return BadRequest();
@@ -79,6 +82,7 @@ namespace TestMakerFreeApi.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize]
         public IActionResult Delete(int id)
         {
             var result = DbContext.Results.FirstOrDefault(i => i.Id == id);
