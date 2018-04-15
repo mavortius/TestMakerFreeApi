@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
@@ -28,11 +29,90 @@ namespace TestMakerFreeApi.Controllers
 
             switch (model.grant_type)
             {
-                 case "password":
-                     return await GetToken(model);
-                 default:
-                     return Unauthorized();
+                case "password":
+                    return await GetToken(model);
+                case "refresh_token":
+                    return await RefreshToken(model);
+                default:
+                    return Unauthorized();
             }
+        }
+
+        private async Task<IActionResult> RefreshToken(TokenRequestViewModel model)
+        {
+            try
+            {
+                var rt = DbContext.Tokens.FirstOrDefault(t =>
+                    t.ClientId == model.client_id && t.Value == model.refresh_token);
+
+                if (rt == null)
+                {
+                    return Unauthorized();
+                }
+
+                var user = await UserManager.FindByIdAsync(rt.UserId);
+
+                if (user == null)
+                {
+                    return Unauthorized();
+                }
+
+                var rtNew = CreateRefreshToken(rt.ClientId, rt.UserId);
+
+                DbContext.Tokens.Remove(rt);
+                DbContext.Tokens.Add(rtNew);
+                DbContext.SaveChanges();
+
+                var response = CreateAccessToken(rtNew.UserId, rtNew.Value);
+
+                return Json(response);
+            }
+            catch (Exception)
+            {
+                return Unauthorized();
+            }
+        }
+
+        private TokenResponseViewModel CreateAccessToken(string userId, string refreshToken)
+        {
+            var now = DateTime.UtcNow;
+            var claims = new[]
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, userId),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(JwtRegisteredClaimNames.Iat, new DateTimeOffset(now).ToUnixTimeSeconds().ToString()),
+            };
+            var tokenExpirationMins = Configuration.GetValue<int>("Auth:Jwt:TokenExpirationInMinutes");
+            var issuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["Auth:Jwt:Key"]));
+            var token = new JwtSecurityToken(
+                issuer: Configuration["Auth:Jwt:Issuer"],
+                audience: Configuration["Auth:Jwt:Audience"],
+                claims: claims,
+                notBefore: now,
+                expires: now.Add(TimeSpan.FromMinutes(tokenExpirationMins)),
+                signingCredentials: new SigningCredentials(
+                    issuerSigningKey, SecurityAlgorithms.HmacSha256)
+            );
+            var encodedToken = new JwtSecurityTokenHandler().WriteToken(token);
+            
+            return new TokenResponseViewModel()
+            {
+                token = encodedToken,
+                expiration = tokenExpirationMins,
+                refresh_token = refreshToken
+            };
+        }
+
+        private Token CreateRefreshToken(string clientId, string userId)
+        {
+            return new Token()
+            {
+                ClientId = clientId,
+                UserId = userId,
+                Type = 0,
+                Value = Guid.NewGuid().ToString("N"),
+                CreatedDate = DateTime.UtcNow
+            };
         }
 
         private async Task<IActionResult> GetToken(TokenRequestViewModel model)
@@ -51,35 +131,14 @@ namespace TestMakerFreeApi.Controllers
                     return Unauthorized();
                 }
 
-                var now = DateTime.UtcNow;
+                var rt = CreateRefreshToken(model.client_id, user.Id);
 
-                var claims = new[]
-                {
-                    new Claim(JwtRegisteredClaimNames.Sub, user.Id),
-                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                    new Claim(JwtRegisteredClaimNames.Iat, new DateTimeOffset(now).ToUnixTimeSeconds().ToString())
-                };
+                DbContext.Tokens.Add(rt);
+                DbContext.SaveChanges();
 
-                var tokenExpirationMins = Configuration.GetValue<int>("Auth:Jwt:TokenExpirationInMinutes");
-                var issuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["Auth:Jwt:Key"]));
-                var token = new JwtSecurityToken(
-                    issuer: Configuration["Auth:Jwt:Issuer"],
-                    audience: Configuration["Auth:Jwt:Audience"],
-                    claims: claims,
-                    notBefore: now,
-                    expires:
-                    now.Add(TimeSpan.FromMinutes(tokenExpirationMins)),
-                    signingCredentials: new SigningCredentials(
-                        issuerSigningKey,
-                        SecurityAlgorithms.HmacSha256)
-                );
-                var encodedToken = new JwtSecurityTokenHandler().WriteToken(token);
-                var response = new TokenResponseViewModel()
-                {
-                    token = encodedToken,
-                    expiration = tokenExpirationMins
-                };
-                return Json(response);
+                var t = CreateAccessToken(user.Id, rt.Value);
+
+                return Json(t);
             }
             catch (Exception)
             {

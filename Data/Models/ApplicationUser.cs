@@ -25,5 +25,6 @@ namespace TestMakerFreeApi.Data.Models
 
         public virtual List<Quiz> Quizzes { get; set; }
 
+        public virtual List<Token> Tokens { get; set; }
     }
 }
