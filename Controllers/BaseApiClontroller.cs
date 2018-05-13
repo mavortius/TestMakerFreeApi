@@ -7,7 +7,7 @@ using TestMakerFreeApi.Data.Models;
 namespace TestMakerFreeApi.Controllers
 {
     [Route("api/[controller]")]
-    public class BaseApiClontroller : Controller
+    public class BaseApiClontroller : ControllerBase
     {
         public BaseApiClontroller(ApplicationDbContext dbContext,
             RoleManager<IdentityRole> roleManager,

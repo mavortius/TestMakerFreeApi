@@ -65,7 +65,7 @@ namespace TestMakerFreeApi.Controllers
 
                 var response = CreateAccessToken(rtNew.UserId, rtNew.Value);
 
-                return Json(response);
+                return Ok(response);
             }
             catch (Exception)
             {
@@ -138,7 +138,7 @@ namespace TestMakerFreeApi.Controllers
 
                 var t = CreateAccessToken(user.Id, rt.Value);
 
-                return Json(t);
+                return Ok(t);
             }
             catch (Exception)
             {
